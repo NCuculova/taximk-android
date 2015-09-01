@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="taxi_yellow">#FFB118</color>
+    <color name="taxi_yellow_pressed">#EF5206</color>
+    <color name="taxi_black">#2B2B2B</color>
+    <color name="taxi_black_pressed">#3C3F41</color>
+</resources>
