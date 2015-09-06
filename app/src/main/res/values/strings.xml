@@ -1,10 +1,15 @@
 <resources>
-    <string name="app_name">TaxiNadica</string>
+    <string name="app_name">TaxiMK</string>
 
-    <string name="hello_world">Hello world!</string>
-    <string name="action_settings">Settings</string>
-    <string name="action_cancel">Cancel</string>
+    <string name="hello_world">Hello world!</string>s
+    <string name="action_settings">Подесувања</string>
+    <string name="action_cancel">Откажи</string>
+    <string name="action_check">Провери</string>
     <string name="drawer_open">Open navigation drawer</string>
     <string name="drawer_close">Close navigation drawer</string>
     <string name="fav">Favourite</string>
+    <string name="network_error">Нема активна интернет врска.</string>
+    <string name="check_internet">Провери ја својата интернет врска?</string>
+    <string name="action_remember_state">Запомни последно отворено</string>
+    <string name="action_call">Ѕвони директно</string>
 </resources>

@@ -32,9 +32,8 @@ public class TaxiProcessor {
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             InputStream input = new BufferedInputStream(connection.getInputStream());
             String content = IOUtils.toString(input);
-            JSONObject jsonObject = new JSONObject(content);
-            version = jsonObject.getInt("version");
-            JSONArray dataArray = jsonObject.getJSONArray("data");
+            //JSONObject jsonObject = new JSONObject(content);
+            JSONArray dataArray = new JSONArray(content);
             for (int i = 0; i < dataArray.length() ; i++) {
                 JSONObject jsonData = (JSONObject) dataArray.get(i);
                 Taxi taxi = new Taxi();

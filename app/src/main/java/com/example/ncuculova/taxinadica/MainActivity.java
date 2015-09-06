@@ -2,14 +2,19 @@ package com.example.ncuculova.taxinadica;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.drawable.ColorDrawable;
+import android.net.ConnectivityManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -35,7 +40,7 @@ import com.melnykov.fab.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements DialogInterface.OnClickListener {
 
     TaxiAdapter mTaxiAdapter;
     ProgressBar mProgressBar;
@@ -53,12 +58,20 @@ public class MainActivity extends AppCompatActivity {
     SwipeRefreshLayout mSwipeRefreshLayout;
     Intent mService;
     IntentFilter mIntentFilter;
-
+    SharedPreferences mSettings;
+    SharedPreferences mPreferences;
+    SharedPreferences.Editor editor;
+    EnableNetworkDialog mEnableNetworkDialog;
+    boolean isReturnedFromSettings;
+    Intent dial;
+    int selectedIndex;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+        mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         mListTaxi = (SwipeMenuListView) findViewById(R.id.listView);
         mListTaxi.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -76,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
         mDrawerList.setAdapter(mCityAdapter);
         favouriteMode = false;
         cancelItem = null;
+        mEnableNetworkDialog = new EnableNetworkDialog();
+        mEnableNetworkDialog.setOnDialogClickListener(this);
         mService = new Intent(this, DownloadTaxiService.class);
         mIntentFilter = new IntentFilter(Constants.BROADCAST_ACTION);
         // Instantiates a new DownloadStateReceiver
@@ -85,59 +100,47 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this).registerReceiver(
                 mDownloadStateReceiver,
                 mIntentFilter);
-        mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
 
+        mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                startService(mService);
+                if (isOnline(getApplicationContext())) {
+                    CheckTaxiVersion checkTaxiVersion = new CheckTaxiVersion(getApplicationContext());
+                    checkTaxiVersion.execute();
+                    checkTaxiVersion.setmOnVersionChecked(mOnVersionChecked);
+                } else {
+                    mSwipeRefreshLayout.setRefreshing(false);
+                    mEnableNetworkDialog.show(getSupportFragmentManager(), "enable_network");
+                }
             }
         });
 
         mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if (favouriteMode) {
-                    mTaxiAdapter.setFavModeOff();
-                    rotateBtnBack(btn);
-                }
-                mTaxiAdapter.setFilteredTaxis(id);
-                mTaxiAdapter.setFilter();
-                mTaxiAdapter.notifyDataSetChanged();
+                setCityFilteredData(id);
                 selectedCity = (City) mCityAdapter.getItem(position);
+                selectedIndex = position;
                 mDrawerLayout.closeDrawer(mDrawerList);
             }
         });
 
-        SharedPreferences settings = getPreferences(MODE_PRIVATE);
+        mSettings = getPreferences(MODE_PRIVATE);
+        editor = mSettings.edit();
         FetchTaxis fetchTaxis = new FetchTaxis(this);
         fetchTaxis.setmOnFetchedTaxis(mOnFetchedTaxis);
-        DownloadTaxis downloadTaxis = new DownloadTaxis(this);
-        downloadTaxis.setmOnDownloadedTaxis(new OnDownloadedTaxis() {
-            @Override
-            public void onDownloaded(Data result) {
-                mTaxiAdapter.setTaxis(result.getTaxis());
-                mTaxiAdapter.notifyDataSetChanged();
-                SharedPreferences settings = getPreferences(MODE_PRIVATE);
-                SharedPreferences.Editor editor = settings.edit();
-                editor.putBoolean("saved", true);
-                // Commit the edits!
-                editor.commit();
-                List<City> cities = new ArrayList<>(result.getCities());
-                mCityAdapter.setCities(cities);
-                mCityAdapter.notifyDataSetChanged();
-                mProgressBar.setVisibility(View.GONE);
-            }
 
-        });
-
-        boolean saved = settings.getBoolean("saved", false);
+        boolean saved = mSettings.getBoolean("saved", false);
         if (!saved) {
-            SharedPreferences.Editor editor = settings.edit();
-            editor.putBoolean("saved", true);
-            // Commit the edits!
-            editor.commit();
-            startService(mService);
+            if (isOnline(this)) {
+                CheckTaxiVersion checkTaxiVersion = new CheckTaxiVersion(getApplicationContext());
+                checkTaxiVersion.setmOnVersionChecked(mOnVersionChecked);
+                checkTaxiVersion.execute();
+                startService(mService);
+            } else {
+                mEnableNetworkDialog.show(getSupportFragmentManager(), "enable_network");
+            }
         } else {
             mProgressBar.setVisibility(View.VISIBLE);
             fetchTaxis.execute();
@@ -216,8 +219,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onMenuItemClick(int position, SwipeMenu menu, int index) {
                 Taxi taxi = mTaxiAdapter.getTaxi(position);
-                Intent dial = new Intent();
-                dial.setAction("android.intent.action.DIAL");
+                checkUserCallPreferences();
                 switch (index) {
                     case 0: {
                         dial.setData(Uri.parse("tel:" + taxi.getPhone()));
@@ -251,6 +253,16 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void setCityFilteredData(long id) {
+        if (favouriteMode) {
+            mTaxiAdapter.setFavModeOff();
+            rotateBtnBack(btn);
+        }
+        mTaxiAdapter.setFilteredTaxis(id);
+        mTaxiAdapter.setFilter();
+        mTaxiAdapter.notifyDataSetChanged();
+    }
+
     private final OnFetchedTaxis mOnFetchedTaxis = new OnFetchedTaxis() {
         @Override
         public void onFetched(Data result) {
@@ -260,6 +272,33 @@ public class MainActivity extends AppCompatActivity {
             mCityAdapter.setCities(cities);
             mCityAdapter.notifyDataSetChanged();
             mProgressBar.setVisibility(View.GONE);
+            if (checkUserRememberPreferences()) {
+                System.out.println("remember");
+                int cityIndex = mSettings.getInt("cityFilter", -1);
+                System.out.println("CIty index: " + cityIndex);
+                if (cityIndex != -1) {
+                    selectedCity = (City) mCityAdapter.getItem(cityIndex);
+                    setCityFilteredData(selectedCity.getId());
+                    getSupportActionBar().setTitle(selectedCity.getName());
+                    cancelItem.setVisible(true);
+                }
+            }
+        }
+    };
+
+    private final OnVersionChecked mOnVersionChecked = new OnVersionChecked() {
+        @Override
+        public void onChecked(Integer result) {
+            int ver = mSettings.getInt("version", 0);
+            if (result > ver) {
+                startService(mService);
+            } else {
+                mSwipeRefreshLayout.setRefreshing(false);
+                mProgressBar.setVisibility(View.GONE);
+                Toast.makeText(getApplicationContext(), "Нема нови податоци", Toast.LENGTH_SHORT).show();
+            }
+            editor.putInt("version", result);
+            editor.commit();
         }
     };
 
@@ -308,15 +347,33 @@ public class MainActivity extends AppCompatActivity {
         if (mDrawerToggle.onOptionsItemSelected(item)) {
             return true;
         }
+        if (item.getItemId() == R.id.action_settings) {
+            // Display the fragment as the main content.
+            startActivity(new Intent(getApplicationContext(), SettingsActivity.class));
+        }
         if (item.getItemId() == R.id.action_cancel) {
             selectedCity = null;
             mTaxiAdapter.clearFilter();
             mTaxiAdapter.notifyDataSetChanged();
-            item.setVisible(false);
             getSupportActionBar().setTitle("Сите такси компании");
+            item.setVisible(false);
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void checkUserCallPreferences() {
+        boolean call = mPreferences.getBoolean("call", false);
+        System.out.println("CAll set: " + call);
+        if (call) {
+            dial = new Intent(Intent.ACTION_CALL);
+        } else {
+            dial = new Intent(Intent.ACTION_DIAL);
+        }
+    }
+
+    private boolean checkUserRememberPreferences() {
+        return mPreferences.getBoolean("remember", false);
     }
 
     public void onFavorite(View view) {
@@ -332,16 +389,7 @@ public class MainActivity extends AppCompatActivity {
             btn.setImageResource(R.drawable.ic_action_cancel);
             animator.rotation(90);
         } else {
-            mTaxiAdapter.setFavModeOff();
-            if (selectedCity != null) {
-                cancelItem.setVisible(true);
-                getSupportActionBar().setTitle(selectedCity.getName());
-                mTaxiAdapter.setFilteredTaxis(selectedCity.getId());
-                mTaxiAdapter.setFilter();
-            } else {
-                getSupportActionBar().setTitle("Сите такси компании");
-            }
-            rotateBtnBack(btn);
+            resetFavouriteMode();
         }
         mTaxiAdapter.notifyDataSetChanged();
     }
@@ -352,10 +400,113 @@ public class MainActivity extends AppCompatActivity {
         animator.rotation(-72);
     }
 
+    public void resetFavouriteMode() {
+        mTaxiAdapter.setFavModeOff();
+        if (selectedCity != null) {
+            cancelItem.setVisible(true);
+            getSupportActionBar().setTitle(selectedCity.getName());
+            mTaxiAdapter.setFilteredTaxis(selectedCity.getId());
+            mTaxiAdapter.setFilter();
+        } else {
+            getSupportActionBar().setTitle("Сите такси компании");
+        }
+        rotateBtnBack(btn);
+    }
+
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
         mDrawerToggle.syncState();
+    }
+
+    static boolean isOnline(Context context) {
+        // ConnectivityManager is used to check available network(s)
+        ConnectivityManager cm = (ConnectivityManager) context
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm.getActiveNetworkInfo() == null) {
+            // no network is available
+            return false;
+        } else {
+            // at least one type of network is available
+            return true;
+        }
+    }
+
+    //handle dialog interface
+    @Override
+    public void onClick(DialogInterface dialog, int which) {
+        if (which == DialogInterface.BUTTON_NEGATIVE) {
+            dialog.dismiss();
+        } else {
+            isReturnedFromSettings = true;
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        }
+    }
+
+    // Handling time to get internet connection
+    class ResumeActivityTask extends AsyncTask {
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            mProgressBar.setVisibility(View.VISIBLE);
+        }
+
+        @Override
+        protected Object doInBackground(Object[] params) {
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Object o) {
+            super.onPostExecute(o);
+            mProgressBar.setVisibility(View.GONE);
+            if (isOnline(getApplicationContext())) {
+                mProgressBar.setVisibility(View.VISIBLE);
+                CheckTaxiVersion checkTaxiVersion = new CheckTaxiVersion(getApplicationContext());
+                checkTaxiVersion.execute();
+                checkTaxiVersion.setmOnVersionChecked(mOnVersionChecked);
+            } else if (!mSettings.getBoolean("saved", false)) {
+                Toast.makeText(getApplicationContext(),
+                        "Податоците првично се превземаат од интернет\nПроверете ја вашата интернет врска", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "Потребна е интернет врска за освежување на податоците", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (isReturnedFromSettings) {
+            isReturnedFromSettings = false;
+            new ResumeActivityTask().execute();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (favouriteMode) {
+            favouriteMode = false;
+            resetFavouriteMode();
+            mTaxiAdapter.notifyDataSetChanged();
+        } else {
+            finish();
+        }
+    }
+
+    @Override
+    public void finish() {
+        System.out.println("finish index: " + selectedIndex);
+        if (selectedIndex != -1) {
+            editor.putInt("cityFilter", selectedIndex);
+            editor.commit();
+        }
+        super.finish();
     }
 
     // Broadcast receiver for receiving status updates from the IntentService
@@ -368,10 +519,15 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             Toast.makeText(getApplicationContext(), "Data downloaded", Toast.LENGTH_SHORT).show();
+            editor.putBoolean("saved", true);
+            // Commit the edits!
+            editor.commit();
             FetchTaxis fetchTaxis = new FetchTaxis(getApplicationContext());
             fetchTaxis.execute();
             fetchTaxis.setmOnFetchedTaxis(mOnFetchedTaxis);
+            mProgressBar.setVisibility(View.GONE);
             mSwipeRefreshLayout.setRefreshing(false);
         }
     }
+
 }

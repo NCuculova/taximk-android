@@ -154,7 +154,7 @@ public class TaxiAdapter extends BaseAdapter {
         holder.txtNumber.setText(item.getPhone());
         holder.txtNumber2.setText(item.getPhone2());
         holder.txtCity.setText(item.getCity().getName());
-        holder.txtAddress.setText(item.getAddress() != null ?  " - " + item.getAddress() : "");
+        holder.txtAddress.setText(item.getAddress() != null ? " - " + item.getAddress() : "");
         return convertView;
     }
 
@@ -184,7 +184,9 @@ public class TaxiAdapter extends BaseAdapter {
         }
     }
 
-    public void setFilter(){ isFiltered = true; }
+    public void setFilter() {
+        isFiltered = true;
+    }
 
     public void clearFilter() {
         isFiltered = false;

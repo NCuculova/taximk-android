@@ -36,7 +36,6 @@ public class DownloadTaxiService extends IntentService {
 
         try {
             DB snappydb = DBFactory.open(getApplicationContext(), "taxi");
-            Toast.makeText(getApplicationContext(), "saving...", Toast.LENGTH_SHORT);
             for (int i = 0; i < taxis.size(); i++) {
                 Taxi t = taxis.get(i);
                 t.setKey("taxi:" + i);
