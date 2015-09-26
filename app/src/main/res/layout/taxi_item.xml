@@ -10,16 +10,22 @@
         android:id="@+id/txtName"
         android:text="IME"
         android:textSize="24sp"
-        android:textStyle="bold"/>
+        android:textStyle="bold"
+        android:drawableLeft="@drawable/ic_action_car"
+        android:drawablePadding="4dp"
+        android:textColor="@color/taxi_black"
+        android:gravity="center_vertical"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/txtNumber"
         android:layout_below="@+id/txtName"
+        android:layout_marginTop="4dp"
         android:layout_marginRight="30dp"
         android:text="61454651"
-        android:textSize="20sp"/>
+        android:textSize="20sp"
+        android:gravity="center_vertical"/>
 
     <TextView
         android:layout_width="wrap_content"
@@ -27,17 +33,22 @@
         android:id="@+id/txtNumber2"
         android:layout_toRightOf="@+id/txtNumber"
         android:layout_below="@+id/txtName"
+        android:layout_marginTop="4dp"
         android:text="322456"
-        android:textSize="20sp"/>
+        android:textSize="20sp"
+        android:gravity="center_vertical"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/txtCity"
         android:text="Normalen String"
+        android:layout_marginTop="4dp"
         android:layout_below="@+id/txtNumber"
         android:textStyle="bold"
-        android:textSize="16sp"/>
+        android:textSize="16sp"
+        android:drawableLeft="@drawable/ic_action_home"
+        android:gravity="center_vertical"/>
 
     <TextView
         android:layout_width="wrap_content"
@@ -45,6 +56,9 @@
         android:id="@+id/txtAddress"
         android:layout_toRightOf="@+id/txtCity"
         android:text="Normalen String"
+        android:layout_marginTop="3dp"
         android:layout_below="@+id/txtNumber"
-        android:textSize="16sp"/>
+        android:textSize="16sp"
+        android:paddingTop="2dp"/>
+
 </RelativeLayout>

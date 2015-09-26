@@ -4,7 +4,7 @@
     android:layout_height="match_parent">
 
     <CheckBoxPreference
-        android:defaultValue="false"
+        android:defaultValue="true"
         android:key="remember"
         android:title="@string/action_remember_state" />
 

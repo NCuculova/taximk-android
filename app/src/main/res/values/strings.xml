@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">TaxiMK</string>
 
-    <string name="hello_world">Hello world!</string>s
     <string name="action_settings">Подесувања</string>
     <string name="action_cancel">Откажи</string>
     <string name="action_check">Провери</string>
@@ -11,5 +10,9 @@
     <string name="network_error">Нема активна интернет врска.</string>
     <string name="check_internet">Провери ја својата интернет врска?</string>
     <string name="action_remember_state">Запомни последно отворено</string>
-    <string name="action_call">Ѕвони директно</string>
+    <string name="action_call">Повикај такси директно</string>
+    <string name="all_companies">Сите такси компании</string>
+    <string name="data_downloaded">Податоците се превземени</string>
+    <string name="title_activity_settings2">SettingsActivity2</string>
+    <string name="hello_world">Hello world!</string>
 </resources>

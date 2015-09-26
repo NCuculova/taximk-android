@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.ncuculova.taxinadica" >
+    package="com.ncuculova.taximk" >
 
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
@@ -13,7 +13,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name=".MainActivity"
+            android:name="com.ncuculova.taximk.MainActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -22,17 +22,17 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".SettingsActivity"
+            android:name="com.ncuculova.taximk.SettingsActivity"
             android:label="@string/action_settings" >
             <intent-filter>
-                <action android:name="com.example.ncuculova.taxinadica.SETTINGS" />
+                <action android:name="com.ncuculova.taximk.SETTINGS" />
 
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
         <service
-            android:name=".DownloadTaxiService"
+            android:name="com.ncuculova.taximk.DownloadTaxiService"
             android:exported="false" />
 
     </application>

@@ -4,4 +4,6 @@
     <color name="taxi_yellow_pressed">#EF5206</color>
     <color name="taxi_black">#2B2B2B</color>
     <color name="taxi_black_pressed">#3C3F41</color>
+    <color name="taxi_white">#fffeee</color>
+    <color name="taxi_orange">#ff8800</color>
 </resources>
