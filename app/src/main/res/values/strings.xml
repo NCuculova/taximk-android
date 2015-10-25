@@ -12,7 +12,7 @@
     <string name="action_remember_state">Запомни последно отворено</string>
     <string name="action_call">Повикај такси директно</string>
     <string name="all_companies">Сите такси компании</string>
-    <string name="data_downloaded">Податоците се превземени</string>
+    <string name="data_downloaded">Податоците се ажурирани</string>
     <string name="title_activity_settings2">SettingsActivity2</string>
     <string name="hello_world">Hello world!</string>
 </resources>

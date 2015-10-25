@@ -13,6 +13,7 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.PersistableBundle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.support.v4.content.LocalBroadcastManager;
@@ -24,6 +25,7 @@ import android.view.Display;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewPropertyAnimator;
 import android.widget.AdapterView;
@@ -51,7 +53,6 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
     CityAdapter mCityAdapter;
     SwipeMenuListView mListTaxi;
     EditTaxis mEditTaxis;
-    boolean favouriteMode;
     City mSelectedCity;
     MenuItem mCancelItem;
     FloatingActionButton mBtn;
@@ -62,9 +63,11 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
     SharedPreferences mPreferences;
     SharedPreferences.Editor mEditorSettings;
     EnableNetworkDialog mEnableNetworkDialog;
-    boolean isReturnedFromSettings;
     Intent dial;
     int selectedIndex;
+    boolean favouriteMode;
+    boolean isReturnedFromSettings;
+    boolean isOpened;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +76,29 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         mListTaxi = (SwipeMenuListView) findViewById(R.id.listView);
+        mListTaxi.setOnTouchListener(mOnTouchListener);
+        mListTaxi.setOnSwipeListener(new SwipeMenuListView.OnSwipeListener() {
+            @Override
+            public void onSwipeStart(int position) {
+                mSwipeRefreshLayout.setEnabled(false);
+            }
+
+            @Override
+            public void onSwipeEnd(int position) {
+            }
+        });
+        mListTaxi.setOnMenuStateChangeListener(new SwipeMenuListView.OnMenuStateChangeListener() {
+            @Override
+            public void onMenuOpen(int position) {
+                isOpened = true;
+            }
+
+            @Override
+            public void onMenuClose(int position) {
+                isOpened = false;
+                mSwipeRefreshLayout.setEnabled(true);
+            }
+        });
         mListTaxi.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -109,7 +135,7 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
                 if (isOnline(getApplicationContext())) {
                     CheckTaxiVersion checkTaxiVersion = new CheckTaxiVersion(getApplicationContext());
                     checkTaxiVersion.execute();
-                    checkTaxiVersion.setmOnVersionChecked(mOnVersionChecked);
+                    checkTaxiVersion.setOnVersionChecked(mOnVersionChecked);
                 } else {
                     mSwipeRefreshLayout.setRefreshing(false);
                     mEnableNetworkDialog.show(getSupportFragmentManager(), "enable_network");
@@ -136,7 +162,7 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
         if (!saved) {
             if (isOnline(this)) {
                 CheckTaxiVersion checkTaxiVersion = new CheckTaxiVersion(getApplicationContext());
-                checkTaxiVersion.setmOnVersionChecked(mOnVersionChecked);
+                checkTaxiVersion.setOnVersionChecked(mOnVersionChecked);
                 checkTaxiVersion.execute();
                 startService(mService);
             } else {
@@ -254,6 +280,19 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
 
     }
 
+    View.OnTouchListener mOnTouchListener = new View.OnTouchListener() {
+        @Override
+        public boolean onTouch(View v, MotionEvent event) {
+            if (isOpened) {
+                mSwipeRefreshLayout.setEnabled(false);
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    mSwipeRefreshLayout.setEnabled(true);
+                }
+            }
+            return false;
+        }
+    };
+
     public void setCityFilteredData(long id) {
         if (favouriteMode) {
             mTaxiAdapter.setFavModeOff();
@@ -274,10 +313,8 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
             mCityAdapter.notifyDataSetChanged();
             mProgressBar.setVisibility(View.GONE);
             if (checkUserRememberPreferences()) {
-                System.out.println("REmember ON");
                 selectedIndex = mSettings.getInt("cityFilter", -1);
                 if (selectedIndex != -1) {
-                    System.out.println("Selected!!!");
                     mSelectedCity = (City) mCityAdapter.getItem(selectedIndex);
                     setCityFilteredData(mSelectedCity.getId());
                     getSupportActionBar().setTitle(mSelectedCity.getName());
@@ -291,15 +328,15 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
         @Override
         public void onChecked(Integer result) {
             int ver = mSettings.getInt("version", 0);
-            if (result > ver) {
+            if (result != null && result > ver) {
                 startService(mService);
+                mEditorSettings.putInt("version", result);
+                mEditorSettings.commit();
             } else {
                 mSwipeRefreshLayout.setRefreshing(false);
                 mProgressBar.setVisibility(View.GONE);
                 Toast.makeText(getApplicationContext(), "Нема нови податоци", Toast.LENGTH_SHORT).show();
             }
-            mEditorSettings.putInt("version", result);
-            mEditorSettings.commit();
         }
     };
 
@@ -439,9 +476,11 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
     public void onClick(DialogInterface dialog, int which) {
         if (which == DialogInterface.BUTTON_NEGATIVE) {
             dialog.dismiss();
-            Toast.makeText(getApplicationContext(),
-                    "Податоците првично се превземаат од интернет\nПроверете ја вашата интернет врска", Toast.LENGTH_LONG).show();
-            finish();
+            if (!mSettings.getBoolean("saved", false)) {
+                Toast.makeText(getApplicationContext(),
+                        "Податоците првично се превземаат од интернет\nПроверете ја вашата интернет врска", Toast.LENGTH_LONG).show();
+                finish();
+            }
         } else {
             isReturnedFromSettings = true;
             startActivity(new Intent(Settings.ACTION_SETTINGS));
@@ -459,7 +498,7 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
         @Override
         protected Object doInBackground(Object[] params) {
             try {
-                Thread.sleep(3000);
+                Thread.sleep(5000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -474,7 +513,7 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
                 mProgressBar.setVisibility(View.VISIBLE);
                 CheckTaxiVersion checkTaxiVersion = new CheckTaxiVersion(getApplicationContext());
                 checkTaxiVersion.execute();
-                checkTaxiVersion.setmOnVersionChecked(mOnVersionChecked);
+                checkTaxiVersion.setOnVersionChecked(mOnVersionChecked);
             } else if (!mSettings.getBoolean("saved", false)) {
                 Toast.makeText(getApplicationContext(),
                         "Податоците првично се превземаат од интернет\nПроверете ја вашата интернет врска", Toast.LENGTH_LONG).show();
@@ -483,6 +522,13 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
                 Toast.makeText(getApplicationContext(), "Потребна е интернет врска за освежување на податоците", Toast.LENGTH_LONG).show();
             }
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mEditorSettings.putInt("cityFilter", selectedIndex);
+        mEditorSettings.commit();
     }
 
     @Override
@@ -507,8 +553,6 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
 
     @Override
     public void finish() {
-        mEditorSettings.putInt("cityFilter", selectedIndex);
-        mEditorSettings.commit();
         super.finish();
     }
 
@@ -532,5 +576,4 @@ public class MainActivity extends AppCompatActivity implements DialogInterface.O
             mSwipeRefreshLayout.setRefreshing(false);
         }
     }
-
 }

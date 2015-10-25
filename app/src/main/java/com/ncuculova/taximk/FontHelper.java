@@ -11,7 +11,7 @@ public class FontHelper {
 
     public static Typeface getSansCondensed(Context context, boolean bold) {
         synchronized (lock) {
-            if (!bold && mSansBoldCondensed == null)
+            if (!bold && mSansCondensed == null)
                 mSansCondensed = Typeface.createFromAsset(
                         context.getAssets(), "OpenSans-CondLight.ttf");
             else if (bold && mSansBoldCondensed == null)

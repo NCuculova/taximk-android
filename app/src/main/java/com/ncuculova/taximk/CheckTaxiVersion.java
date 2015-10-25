@@ -27,8 +27,8 @@ public class CheckTaxiVersion extends AsyncTask<Void, Void, Integer> {
         mContext = context;
     }
 
-    public void setmOnVersionChecked(OnVersionChecked mOnVersionChecked) {
-        this.mOnVersionChecked = mOnVersionChecked;
+    public void setOnVersionChecked(OnVersionChecked onVersionChecked) {
+        this.mOnVersionChecked = onVersionChecked;
     }
 
     @Override
@@ -40,8 +40,6 @@ public class CheckTaxiVersion extends AsyncTask<Void, Void, Integer> {
             String content = IOUtils.toString(input);
             JSONObject jsonObject = new JSONObject(content);
             version = jsonObject.getInt("version");
-            System.out.println("VERSION: " + version);
-
         } catch (MalformedURLException e) {
             e.printStackTrace();
         } catch (IOException e1) {
